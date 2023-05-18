@@ -101,6 +101,7 @@ pub async fn upload(
             },
             "payload" => {
                 let filepath = format!("./project_data/{}/{}", id, sanitize_filename::sanitize(&upload_name));
+                print!("Path: {}", filepath);
                 let mut f = async_std::fs::File::create(&filepath).await.unwrap();
         
                 while let Some(chunk) = field.next().await {
@@ -111,8 +112,20 @@ pub async fn upload(
             _ => {
 
             }
-        }
+        } 
     }
+    let mut conn = db_pool.acquire().await.unwrap();
+    let result = sqlx::query(
+        r#"
+        INSERT INTO file_entry (name, path, project_id)
+        VALUES (?, ?, ?);
+        "#,     
+    )
+    .bind(upload_name)
+    .bind("")
+    .bind(*id)
+    .execute(&mut conn)
+    .await;
     Ok(HttpResponse::Ok().into())
 }
 
