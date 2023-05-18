@@ -3,29 +3,16 @@ use sqlx::{SqlitePool, Error};
 use crate::models::user::User;
 use crate::models::project::Project;
 use crate::models::user_project::UserProject;
+use crate::models::credentials::Credentials;
+use crate::models::claims::Claims;
+use crate::models::token_response::TokenResponse;
+
+
 use sqlx::Acquire;
 use bcrypt::{DEFAULT_COST, hash, verify};
 use jsonwebtoken::{encode, EncodingKey, Header, Algorithm};
 use serde::{Serialize, Deserialize};
 use chrono::{Utc, Duration};
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Claims {
-    userID: i64,
-    sub: String,
-    exp: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Credentials {
-    pub username: String,
-    pub password: String,
-}
-
-#[derive(Serialize)]
-struct TokenResponse {
-    token: String,
-}
 
 pub async fn add_user(db_pool: web::Data<SqlitePool>, new_user: web::Json<User>) -> impl Responder {
     let mut conn = db_pool.acquire().await.unwrap();
@@ -54,7 +41,7 @@ pub async fn login(
 ) -> impl Responder {
     let mut conn = db_pool.acquire().await.unwrap();
 
-    let row: Result<(i64, String,), sqlx::Error> = sqlx::query_as(
+    let row: Result<(i64,String,), sqlx::Error> = sqlx::query_as(
         r#"
         SELECT id, hashed_password 
         FROM users 

@@ -1,11 +1,14 @@
+mod utils;
+mod models;
+mod handlers;
+
+
 use actix_web::{App, HttpServer, web};
 use sqlx::{SqlitePool, sqlite::SqliteConnectOptions, ConnectOptions};
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
-
-mod models;
-mod handlers;
+use utils::middleware::JwtMiddleware;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {

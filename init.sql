@@ -27,6 +27,7 @@ CREATE TABLE if NOT EXISTS user_project (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+
 CREATE INDEX idx_file_entry_project_id ON file_entry(project_id);
 CREATE INDEX idx_user_project_user_id ON user_project(user_id);
 CREATE INDEX idx_user_project_project_id ON user_project(project_id);
