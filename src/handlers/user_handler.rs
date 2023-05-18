@@ -13,6 +13,7 @@ use bcrypt::{DEFAULT_COST, hash, verify};
 use jsonwebtoken::{encode, EncodingKey, Header, Algorithm};
 use serde::{Serialize, Deserialize};
 use chrono::{Utc, Duration};
+use std::fs;
 
 pub async fn add_user(db_pool: web::Data<SqlitePool>, new_user: web::Json<User>) -> impl Responder {
     let mut conn = db_pool.acquire().await.unwrap();
@@ -30,7 +31,9 @@ pub async fn add_user(db_pool: web::Data<SqlitePool>, new_user: web::Json<User>)
     .await;
 
     match result {
-        Ok(_) => HttpResponse::Ok().json(new_user.0), // Respond with the new user.
+        Ok(_) => {
+            HttpResponse::Ok().json(new_user.0)
+        }, 
         Err(_) => HttpResponse::InternalServerError().body("Something went wrong"),
     }
 }
@@ -92,4 +95,5 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
         web::resource("/login")
             .route(web::post().to(login))
     );
+    
 }

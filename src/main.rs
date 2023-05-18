@@ -15,7 +15,6 @@ use crate::utils::middleware::JwtMiddleware;
 async fn main() -> std::io::Result<()> {
     // This will create a new SQLite database in the same directory as your Cargo.toml file.
     let database_url = "sqlite://db/embeddings_database.db";
-
     let pool: SqlitePool;
 
     // Check if the database file exists
@@ -49,8 +48,9 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
 
         App::new()
+            .data(web::JsonConfig::default().limit(10 * 1024 * 1024)) 
             .app_data(web::Data::new(pool.clone()))
-            .wrap(JwtMiddleware)
+            /*.wrap(JwtMiddleware)*/
             .configure(handlers::user_handler::init_routes)
             .configure(handlers::project_handler::init_routes)
     })
