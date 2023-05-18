@@ -8,7 +8,8 @@ use sqlx::{SqlitePool, sqlite::SqliteConnectOptions, ConnectOptions};
 use std::path::Path;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
-use utils::middleware::JwtMiddleware;
+use actix_service::Service;
+use crate::utils::middleware::JwtMiddleware;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -44,9 +45,12 @@ async fn main() -> std::io::Result<()> {
             .expect("Failed to create pool.");
     }
 
+
     HttpServer::new(move || {
+
         App::new()
             .app_data(web::Data::new(pool.clone()))
+            .wrap(JwtMiddleware)
             .configure(handlers::user_handler::init_routes)
             .configure(handlers::project_handler::init_routes)
     })
