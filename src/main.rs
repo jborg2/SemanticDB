@@ -1,7 +1,7 @@
 mod utils;
 mod models;
 mod handlers;
-
+mod tests;
 
 use actix_web::{App, HttpServer, web};
 use sqlx::{SqlitePool, sqlite::SqliteConnectOptions, ConnectOptions};
@@ -43,7 +43,6 @@ async fn main() -> std::io::Result<()> {
             .await
             .expect("Failed to create pool.");
     }
-
 
     HttpServer::new(move || {
 
