@@ -85,6 +85,13 @@ pub async fn login(
     }
 }
 
+pub async fn create_user(
+    db_pool: web::Data<SqlitePool>,
+    reset_password_credentials: web::Json<Credentials>
+) -> impl Responder {
+    
+}
+
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::resource("/users")
