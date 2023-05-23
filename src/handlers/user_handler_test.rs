@@ -96,45 +96,44 @@ mod tests {
         assert_eq!(login_result.status(), StatusCode::UNAUTHORIZED); 
     }
 
-
-    /*
-    #[actix_rt::test]
-    async fn test_login() {
-        let pool = setup_db().await;
-
-        // Add a user before testing login
-        add_test_user(web::Data::new(pool)).await;
-
-        let credentials = Credentials {
-            username: String::from("test_user"),
-            password: String::from("password"),
-        };
-
-        let result = login(web::Data::new(pool), web::Json(credentials)).await;
-        let response = result.downcast::<HttpResponse>().unwrap();
-        
-        assert_eq!(response.status(), 200);
-        // Check the response body if necessary.
-    }
-
     #[actix_rt::test]
     async fn test_reset_password() {
         let pool = setup_db().await;
 
-        // Add a user before testing reset password
-        add_test_user(web::Data::new(pool)).await;
+        let new_user = User {
+            id: None,
+            username: String::from("test_user"),
+            password: String::from("password"),
+        };
 
-        let reset_password_credentials = ResetPasswordCredentials {
+        let result = add_user(web::Data::new(pool.clone()), web::Json(new_user)).await;
+
+        assert_eq!(result.status(), StatusCode::OK);
+
+        let login_result = login(web::Data::new(pool.clone()), web::Json(Credentials {
+            username: String::from("test_user"),
+            password: String::from("password"),
+        })).await;
+
+        assert_eq!(login_result.status(), StatusCode::OK); 
+
+        let reset_password_result = reset_password(web::Data::new(pool.clone()), web::Json(ResetPasswordCredentials {
             username: String::from("test_user"),
             password: String::from("password"),
             new_password: String::from("new_password"),
-        };
+        })).await;
 
-        let result = reset_password(web::Data::new(pool), web::Json(reset_password_credentials)).await;
-        let response = result.downcast::<HttpResponse>().unwrap();
-        
-        assert_eq!(response.status(), 200);
-        // Check the response body if necessary.
+        // Query the database to check if the user was added
+        let user = sqlx::query_as::<_, DatabaseUser>("SELECT * FROM users WHERE username = 'test_user'")
+            .fetch_one(&pool)
+            .await
+            .expect("Failed to query database.");
+            
+        assert_eq!(user.username, "test_user");
+    
+    
+        let verified = verify(String::from("new_password"), &user.hashed_password).unwrap();
+    
+        assert_eq!(verified, true);
     }
-    */
 }
