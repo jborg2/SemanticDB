@@ -12,7 +12,8 @@ use async_std::prelude::*;  // Import prelude for write_all
 use futures::TryStreamExt;
 use serde::Deserialize;
 
-pub async fn add_project(db_pool: web::Data<SqlitePool>, new_project: web::Json<Project>) -> impl Responder {
+pub async fn add_project(db_pool: web::Data<SqlitePool>, new_project: web::Json<Project>
+) -> HttpResponse {
     let mut conn = db_pool.acquire().await.unwrap();
 
     let mut transaction = conn.begin().await.unwrap(); // Start a new transaction
@@ -47,8 +48,8 @@ pub async fn add_project(db_pool: web::Data<SqlitePool>, new_project: web::Json<
 
 pub async fn get_project_by_id(
     db_pool: web::Data<SqlitePool>,
-    project_id: web::Path<i32>,
-) -> impl Responder {
+    project_id: web::Path<i64>,
+) -> HttpResponse {
     let mut conn = db_pool.acquire().await.unwrap();
     let result: Result<Project, sqlx::Error> = sqlx::query_as(
         r#"
