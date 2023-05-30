@@ -10,6 +10,7 @@ use std::fs;
 use std::io::SeekFrom;
 use std::io::prelude::*;
 use futures::future::join_all;
+use crate::models::embedding_entry::EmbeddingEntry;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Embedding {
@@ -171,9 +172,48 @@ pub async fn embed_file(db_pool: web::Data<SqlitePool>, file_id: web::Path<i64>)
     }
 }
 
+pub async fn get_embeddings(db_pool: web::Data<SqlitePool>, file_id: web::Path<i64>) -> HttpResponse {
+    let mut conn = db_pool.acquire().await.unwrap();
+    let result: Result<Vec<(i64, i64, Vec<u8>)>, sqlx::Error> = sqlx::query_as(
+        r#"
+            SELECT start_byte, end_byte, embedding
+            FROM file_embedding
+            WHERE file_id = ?
+        "#,
+    )
+    .bind(file_id.into_inner())
+    .fetch_all(&mut conn)
+    .await;
+
+    match result {
+        Ok(rows) => {
+            let mut embeddings = Vec::new();
+            for (start_byte, end_byte, blob) in rows {
+                let embedding: Vec<f64> = match serde_json::from_slice(&blob) {
+                    Ok(embedding) => embedding,
+                    Err(e) => {
+                        eprintln!("Failed to deserialize embedding: {}", e);
+                        return HttpResponse::InternalServerError().body("Something went wrong");
+                    },
+                };
+                embeddings.push(EmbeddingEntry { start_byte, end_byte, embedding });
+            }
+            HttpResponse::Ok().json(embeddings)
+        },
+        Err(e) => {
+            eprintln!("Database error: {}", e); 
+            HttpResponse::InternalServerError().body("Something went wrong")
+        }
+    }
+}
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::resource("/file/{id}/embed")
             .route(web::get().to(embed_file))
+    );
+
+    cfg.service(
+        web::resource("/file/{id}/embeddings")
+            .route(web::get().to(get_embeddings))
     );
 }

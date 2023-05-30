@@ -7,3 +7,4 @@ pub mod claims;
 pub mod token_response;
 pub mod reset_password_credentials;
 pub mod file;
+pub mod embedding_entry;
