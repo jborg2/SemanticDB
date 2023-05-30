@@ -6,3 +6,4 @@ pub mod credentials;
 pub mod claims;
 pub mod token_response;
 pub mod reset_password_credentials;
+pub mod file;

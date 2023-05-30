@@ -10,9 +10,13 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use actix_service::Service;
 use crate::utils::middleware::JwtMiddleware;
+use crate::handlers::user_handler::login;
+use dotenv::dotenv;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
+    
     // This will create a new SQLite database in the same directory as your Cargo.toml file.
     let database_url = "sqlite://db/embeddings_database.db";
     let pool: SqlitePool;
@@ -49,9 +53,13 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .data(web::JsonConfig::default().limit(10 * 1024 * 1024)) 
             .app_data(web::Data::new(pool.clone()))
-            /*.wrap(JwtMiddleware)*/
+            .service(
+                web::resource("/login").route(web::post().to(login))
+            )
+            //.wrap(JwtMiddleware)
             .configure(handlers::user_handler::init_routes)
             .configure(handlers::project_handler::init_routes)
+            .configure(handlers::embedding_handler::init_routes)
     })
     .bind("127.0.0.1:8000")?
     .run()

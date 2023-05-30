@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use dotenv::dotenv;
     use super::*;
     use actix_web::{web, App, Responder, HttpResponse};
     use actix_web::http::StatusCode;
@@ -10,6 +11,8 @@ mod tests {
     use crate::models::user_response::DatabaseUser;
     use crate::models::credentials::Credentials;
     use crate::models::reset_password_credentials::ResetPasswordCredentials;
+    use crate::handlers::embeddings::get_embedding;
+
     use tokio::fs::read_to_string; // Imported read_to_string
 
     async fn setup_db() -> SqlitePool {
@@ -133,7 +136,12 @@ mod tests {
     
     
         let verified = verify(String::from("new_password"), &user.hashed_password).unwrap();
-    
         assert_eq!(verified, true);
+    }
+
+    #[actix_rt::test]
+    async fn test_rnd() {
+        dotenv().ok();
+        get_embedding(String::from("this is a test")).await;
     }
 }

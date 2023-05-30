@@ -141,10 +141,4 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
         web::resource("/users")
             .route(web::post().to(add_user))
     );
-
-    cfg.service(
-        web::resource("/login")
-            .route(web::post().to(login))
-    );
-    
 }

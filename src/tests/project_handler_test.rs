@@ -3,11 +3,16 @@ mod tests {
     use super::*;
     use actix_web::{web, App, http, test, dev::ServiceResponse};
     use actix_web::http::StatusCode;
+    use actix_web::FromRequest;
     use sqlx::SqlitePool;
     use crate::handlers::project_handler::*;
     use crate::models::project::Project;
     use std::fs;
+    use std::io::Cursor;
+    use std::path::Path;
+    use actix_multipart::{Field, Multipart};
     use tokio::fs::read_to_string;
+    use futures::stream;
 
     async fn setup_db() -> SqlitePool {
         let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();

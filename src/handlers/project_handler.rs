@@ -81,15 +81,16 @@ async fn read_string(field: &mut Field) -> Option<String> {
 
 pub async fn upload(
     db_pool: web::Data<SqlitePool>,
-    id: web::Path<i32>,
+    id: web::Path<i64>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, actix_web::Error> {
     let mut upload_name = String::new();
+    let mut file_path = String::from("");
     while let Some(item) = payload.next().await {
         let mut field = item?;
         let content_disposition = field.content_disposition(); //.unwrap();
         let field_name = content_disposition.get_name().unwrap();
-        
+
         match field_name {
             "upload_name" => {
                 if let Some(name) = read_string(&mut field).await { // pass `&mut field` instead of `&mut item`
@@ -101,9 +102,9 @@ pub async fn upload(
                 }
             },
             "payload" => {
-                let filepath = format!("./project_data/{}/{}", id, sanitize_filename::sanitize(&upload_name));
-                print!("Path: {}", filepath);
-                let mut f = async_std::fs::File::create(&filepath).await.unwrap();
+                file_path = format!("./project_data/{}/{}", id, sanitize_filename::sanitize(&upload_name));
+                
+                let mut f = async_std::fs::File::create(&file_path).await.unwrap();
         
                 while let Some(chunk) = field.next().await {
                     let data = chunk.unwrap();
@@ -115,6 +116,7 @@ pub async fn upload(
             }
         } 
     }
+
     let mut conn = db_pool.acquire().await.unwrap();
     let result = sqlx::query(
         r#"
@@ -123,7 +125,7 @@ pub async fn upload(
         "#,     
     )
     .bind(upload_name)
-    .bind("")
+    .bind(file_path)
     .bind(*id)
     .execute(&mut conn)
     .await;
