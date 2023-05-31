@@ -1,12 +1,12 @@
 use std::collections::HashMap;
-use crate::memory_management::project_store::project_store;
+use crate::memory_management::project_store::ProjectStore;
 use sqlx::{SqlitePool};
 use sqlx::Acquire;
 use serde::Deserialize;
 use actix_web::{web, Error, HttpResponse};
 
 pub struct ProjectManager {
-    projects: HashMap<String, project_store>,
+    projects: HashMap<String, ProjectStore>,
     dbPool: SqlitePool
 }
 
@@ -72,21 +72,34 @@ impl ProjectManager {
             .bind(project.id)
             .fetch_all(&mut conn)
             .await;            
+            let file_ids: Vec<i64> = project.file_ids.split(",").map(|x| x.parse::<i64>().unwrap()).collect();
             for embedding in result.unwrap() {
                 let embedding_str = String::from_utf8(embedding.embedding).unwrap();
                 let data: Vec<f64> = serde_json::from_str(&embedding_str).unwrap();
                 let key = format!("{}-{}-{}", embedding.file_id, embedding.start_byte, embedding.end_byte);
                 project_hashmap.insert(key, data);
             }
+
+            /*
+            let project_store = ProjectStore {
+                project_id: project.id,
+                name: project.name.clone(),
+                in_memory: true,
+                file_ids: file_ids,
+                embeddings: project_hashmap
+            };
+
+            self.add_project(project.name, project_store);
+            */
         }
 
     }
 
-    fn add_project(&mut self, name: String, project_store: project_store) {
+    fn add_project(&mut self, name: String, project_store: ProjectStore) {
         self.projects.insert(name, project_store);
     }
 
-    fn get_project(&mut self, name: String) -> Option<&mut project_store> {
+    fn get_project(&mut self, name: String) -> Option<&mut ProjectStore> {
         self.projects.get_mut(&name)
     }
 }
