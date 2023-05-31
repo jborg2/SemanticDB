@@ -49,8 +49,10 @@ async fn main() -> std::io::Result<()> {
             .await
             .expect("Failed to create pool.");
     }
-    let project_manager = web::Data::new(ProjectManager::new(pool.clone()));
-
+    let mut project_manager = ProjectManager::new(pool.clone());
+    project_manager.init_projects().await;
+    let project_manager = web::Data::new(project_manager);
+    
     HttpServer::new(move || {
 
         App::new()
