@@ -1,5 +1,6 @@
 CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    auto_load BOOLEAN DEFAULT 1,
     name TEXT NOT NULL,
     description TEXT NOT NULL
 );

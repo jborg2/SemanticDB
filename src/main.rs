@@ -2,6 +2,7 @@ mod utils;
 mod models;
 mod handlers;
 mod tests;
+mod memory_management;
 
 use actix_web::{App, HttpServer, web};
 use sqlx::{SqlitePool, sqlite::SqliteConnectOptions, ConnectOptions};
@@ -11,6 +12,7 @@ use tokio::io::AsyncReadExt;
 use actix_service::Service;
 use crate::utils::middleware::JwtMiddleware;
 use crate::handlers::user_handler::login;
+use crate::memory_management::project_manager::ProjectManager;
 use dotenv::dotenv;
 
 #[actix_web::main]
@@ -47,12 +49,14 @@ async fn main() -> std::io::Result<()> {
             .await
             .expect("Failed to create pool.");
     }
+    let project_manager = web::Data::new(ProjectManager::new(pool.clone()));
 
     HttpServer::new(move || {
 
         App::new()
             .data(web::JsonConfig::default().limit(10 * 1024 * 1024)) 
             .app_data(web::Data::new(pool.clone()))
+            .app_data(project_manager.clone())
             .service(
                 web::resource("/login").route(web::post().to(login))
             )
