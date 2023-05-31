@@ -34,3 +34,5 @@ annoy = "0.1.0"
 annoy-rs = "0.1.0"
 vpsearch = "2.0.1"
 blas = "0.22.0"
+blas-src = { version = "*", default-features = false, features = ["openblas"] }
+openblas-src = { version = "0.6.1", default-features = false, features = ["cblas", "system"] }

@@ -4,6 +4,7 @@ use sqlx::{SqlitePool};
 use sqlx::Acquire;
 use serde::Deserialize;
 use actix_web::{web, Error, HttpResponse};
+use crate::memory_management::project_store::Embedding;
 
 pub struct ProjectManager {
     projects: HashMap<String, ProjectStore>,
@@ -52,7 +53,7 @@ impl ProjectManager {
         for project in result.unwrap() {
             println!("Loading Project id to memory: {}", project.name);
             let mut conn = self.dbPool.acquire().await.unwrap();
-            let mut project_hashmap = HashMap::new();
+            let mut embeddings = Vec::<Embedding>::new();
 
             let result: Result<Vec<EmbeddingResultQuery>, sqlx::Error> = sqlx::query_as(
                 r#"
@@ -76,21 +77,22 @@ impl ProjectManager {
             for embedding in result.unwrap() {
                 let embedding_str = String::from_utf8(embedding.embedding).unwrap();
                 let data: Vec<f64> = serde_json::from_str(&embedding_str).unwrap();
-                let key = format!("{}-{}-{}", embedding.file_id, embedding.start_byte, embedding.end_byte);
-                project_hashmap.insert(key, data);
+                let insert_embedding = Embedding {
+                    file_id: embedding.file_id,
+                    start_byte: embedding.start_byte,
+                    end_byte: embedding.end_byte,
+                    embedding: data
+                };
+                embeddings.push(insert_embedding);
             }
-
-            /*
-            let project_store = ProjectStore {
-                project_id: project.id,
-                name: project.name.clone(),
-                in_memory: true,
-                file_ids: file_ids,
-                embeddings: project_hashmap
-            };
-
+            let sample_embedding = embeddings[0].clone();
+        
+            let project_store = ProjectStore::new(project.name.clone(), project.id, file_ids, true, embeddings);
+            
+            let sample_n = project_store.get_knn(&sample_embedding, 10);
+            println!("Sample N: {:?}", sample_n);
             self.add_project(project.name, project_store);
-            */
+            
         }
 
     }

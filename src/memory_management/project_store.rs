@@ -1,3 +1,4 @@
+extern crate openblas_src;
 extern crate blas;
 use blas::{ddot, dnrm2};
 use std::cmp::min;
@@ -21,7 +22,7 @@ pub struct ProjectStore {
     pub project_id: i64,
     pub file_ids: Vec<i64>,
     pub embeddings: Vec<Embedding>,
-    pub vp_tree: Option<vpsearch::Tree<Embedding>>,
+    vp_tree: Option<vpsearch::Tree<Embedding>>,
 }
 
 impl vpsearch::MetricSpace for Embedding {
@@ -39,8 +40,7 @@ impl vpsearch::MetricSpace for Embedding {
 }
 
 impl ProjectStore {
-    pub fn new(name: String, project_id: i64, file_ids: Vec<i64>, in_memory: bool) -> ProjectStore {
-        let mut embeddings = Vec::<Embedding>::new();
+    pub fn new(name: String, project_id: i64, file_ids: Vec<i64>, in_memory: bool, embeddings: Vec::<Embedding>) -> ProjectStore {
         let mut store = ProjectStore {
             name: name,
             project_id: project_id,
@@ -54,8 +54,9 @@ impl ProjectStore {
         store
     }
 
-    pub fn get_knn(&self, embedding: &Embedding, k: usize) -> Vec<vpsearch::Neighbor<Embedding>> {
-        self.vp_tree.as_ref().unwrap().search(&embedding, k, &())
+    pub fn get_knn(&self, embedding: &Embedding, k: usize) -> usize{
+        let (index, _) = self.vp_tree.as_ref().unwrap().find_nearest(&embedding);
+        return index;
     }
 }
 
