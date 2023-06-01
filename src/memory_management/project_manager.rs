@@ -77,6 +77,7 @@ impl ProjectManager {
             for embedding in result.unwrap() {
                 let embedding_str = String::from_utf8(embedding.embedding).unwrap();
                 let data: Vec<f64> = serde_json::from_str(&embedding_str).unwrap();
+
                 let insert_embedding = Embedding {
                     file_id: embedding.file_id,
                     start_byte: embedding.start_byte,
@@ -85,17 +86,19 @@ impl ProjectManager {
                 };
                 embeddings.push(insert_embedding);
             }
-            let sample_embedding = embeddings[0].clone();
-        
+
             let project_store = ProjectStore::new(project.name.clone(), project.id, file_ids, true, embeddings);
-            
-            let sample_n = project_store.get_knn(&sample_embedding, 10);
-            println!("Sample N: {:?}", sample_n);
             self.add_project(project.name, project_store);
             
         }
-
     }
+
+    pub fn get_most_similiar_embedding(&mut self, project_name: String, embedding: Embedding) -> Embedding {
+        let project_store = self.get_project(project_name).unwrap();
+        let knn = project_store.get_knn(&embedding, 1);
+        project_store.embeddings[knn].clone()
+    }
+
 
     fn add_project(&mut self, name: String, project_store: ProjectStore) {
         self.projects.insert(name, project_store);

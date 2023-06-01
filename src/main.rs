@@ -67,7 +67,7 @@ async fn main() -> std::io::Result<()> {
             .configure(handlers::project_handler::init_routes)
             .configure(handlers::embedding_handler::init_routes)
     })
-    .bind("127.0.0.1:8000")?
+    .bind("0.0.0.0:8000")?
     .run()
     .await
 }

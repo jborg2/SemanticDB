@@ -11,6 +11,8 @@ use std::io::SeekFrom;
 use std::io::prelude::*;
 use futures::future::join_all;
 use crate::models::embedding_entry::EmbeddingEntry;
+use crate::memory_management::project_manager::ProjectManager;
+use std::sync::{Arc, Mutex};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Embedding {
@@ -206,6 +208,35 @@ pub async fn get_embeddings(db_pool: web::Data<SqlitePool>, file_id: web::Path<i
         }
     }
 }
+
+pub async fn get_similiar_text(project_manager: web::Data<Arc<Mutex<ProjectManager>>>) -> HttpResponse  {
+    let input_string = String::from("Hello, my dog is cute");
+    match get_embedding(input_string).await {
+        Ok(embedding) => {
+            let embedding = embedding.data[0].embedding.clone();
+            let input_embedding = crate::memory_management::project_store::Embedding {
+                embedding: embedding.clone(),
+                start_byte: -1,
+                end_byte: -1,
+                file_id: -1
+            };
+    
+            let in_str = String::from("test project 2");
+    
+            // lock the mutex here
+            let mut project_manager = project_manager.lock().unwrap();
+    
+            let most_similiar_index = project_manager.get_most_similiar_embedding(in_str, input_embedding);
+    
+            HttpResponse::Ok().json(embedding)
+        }
+        Err(e) => {
+            eprintln!("OpenAI error: {}", e); 
+            HttpResponse::InternalServerError().body("Something went wrong")
+        }
+    }
+}
+
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::resource("/file/{id}/embed")
@@ -215,5 +246,10 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::resource("/file/{id}/embeddings")
             .route(web::get().to(get_embeddings))
+    );
+
+    cfg.service(
+        web::resource("/embeddings/similiar")
+            .route(web::get().to(get_similiar_text))
     );
 }
