@@ -13,6 +13,7 @@ use actix_service::Service;
 use crate::utils::middleware::JwtMiddleware;
 use crate::handlers::user_handler::login;
 use crate::memory_management::project_manager::ProjectManager;
+use std::sync::{Arc, Mutex};
 use dotenv::dotenv;
 
 #[actix_web::main]
@@ -51,7 +52,8 @@ async fn main() -> std::io::Result<()> {
     }
     let mut project_manager = ProjectManager::new(pool.clone());
     project_manager.init_projects().await;
-    let project_manager = web::Data::new(project_manager);
+    
+    let project_manager = web::Data::new(Arc::new(Mutex::new(project_manager)));
     
     HttpServer::new(move || {
 

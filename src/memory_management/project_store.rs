@@ -5,10 +5,10 @@ use std::cmp::min;
 use std::collections::HashMap;
 use sqlx::{SqlitePool};
 use sqlx::Acquire;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use actix_web::{web, Error, HttpResponse};
 
-#[derive(Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Embedding {
     pub embedding: Vec<f64>,
     pub start_byte: i64,

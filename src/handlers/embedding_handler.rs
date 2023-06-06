@@ -42,6 +42,12 @@ pub struct Request {
     model: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct similiar_text_request {
+    text: String,
+    project_id: i64
+}
+
 pub async fn get_embedding(input_string: String) -> Result<Response, reqwest::Error> {
     let api_key = std::env::var("OPENAI_API_TOKEN").expect("OPENAI_API_TOKEN must be set.");
     let data = Request {
@@ -209,9 +215,9 @@ pub async fn get_embeddings(db_pool: web::Data<SqlitePool>, file_id: web::Path<i
     }
 }
 
-pub async fn get_similiar_text(project_manager: web::Data<Arc<Mutex<ProjectManager>>>) -> HttpResponse  {
-    let input_string = String::from("Hello, my dog is cute");
-    match get_embedding(input_string).await {
+pub async fn get_similiar_text(project_manager: web::Data<Arc<Mutex<ProjectManager>>>, similiar_text_request: web::Json<similiar_text_request>) -> HttpResponse  {
+    let mut project_manager = project_manager.lock().unwrap();
+    match get_embedding(similiar_text_request.text.clone()).await {
         Ok(embedding) => {
             let embedding = embedding.data[0].embedding.clone();
             let input_embedding = crate::memory_management::project_store::Embedding {
@@ -223,12 +229,10 @@ pub async fn get_similiar_text(project_manager: web::Data<Arc<Mutex<ProjectManag
     
             let in_str = String::from("test project 2");
     
-            // lock the mutex here
-            let mut project_manager = project_manager.lock().unwrap();
-    
+            
             let most_similiar_index = project_manager.get_most_similiar_embedding(in_str, input_embedding);
     
-            HttpResponse::Ok().json(embedding)
+            HttpResponse::Ok().json(most_similiar_index)
         }
         Err(e) => {
             eprintln!("OpenAI error: {}", e); 
@@ -250,6 +254,6 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
 
     cfg.service(
         web::resource("/embeddings/similiar")
-            .route(web::get().to(get_similiar_text))
+            .route(web::post().to(get_similiar_text))
     );
 }
