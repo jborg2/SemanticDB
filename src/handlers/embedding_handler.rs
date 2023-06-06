@@ -215,7 +215,7 @@ pub async fn get_embeddings(db_pool: web::Data<SqlitePool>, file_id: web::Path<i
     }
 }
 
-pub async fn get_similiar_text(project_manager: web::Data<Arc<Mutex<ProjectManager>>>, similiar_text_request: web::Json<similiar_text_request>) -> HttpResponse  {
+pub async fn get_similiar_text(project_manager: web::Data<Arc<Mutex<ProjectManager>>>, project_id: web::Path<i64>, similiar_text_request: web::Json<similiar_text_request>) -> HttpResponse  {
     let mut project_manager = project_manager.lock().unwrap();
     match get_embedding(similiar_text_request.text.clone()).await {
         Ok(embedding) => {
@@ -226,11 +226,8 @@ pub async fn get_similiar_text(project_manager: web::Data<Arc<Mutex<ProjectManag
                 end_byte: -1,
                 file_id: -1
             };
-    
-            let in_str = String::from("test project 2");
-    
             
-            let most_similiar_index = project_manager.get_most_similiar_embedding(in_str, input_embedding);
+            let most_similiar_index = project_manager.get_most_similiar_embedding(*project_id, input_embedding);
     
             HttpResponse::Ok().json(most_similiar_index)
         }
@@ -253,7 +250,7 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
     );
 
     cfg.service(
-        web::resource("/embeddings/similiar")
+        web::resource("project/{project_id}/embeddings/similiar")
             .route(web::post().to(get_similiar_text))
     );
 }

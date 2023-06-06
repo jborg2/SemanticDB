@@ -7,7 +7,7 @@ use actix_web::{web, Error, HttpResponse};
 use crate::memory_management::project_store::Embedding;
 
 pub struct ProjectManager {
-    projects: HashMap<String, ProjectStore>,
+    projects: HashMap<i64, ProjectStore>,
     dbPool: SqlitePool
 }
 
@@ -88,23 +88,23 @@ impl ProjectManager {
             }
 
             let project_store = ProjectStore::new(project.name.clone(), project.id, file_ids, true, embeddings);
-            self.add_project(project.name, project_store);
+            self.add_project(project.id, project_store);
             
         }
     }
 
-    pub fn get_most_similiar_embedding(&mut self, project_name: String, embedding: Embedding) -> Embedding {
-        let project_store = self.get_project(project_name).unwrap();
+    pub fn get_most_similiar_embedding(&mut self, project_id: i64, embedding: Embedding) -> Embedding {
+        let project_store = self.get_project(project_id).unwrap();
         let knn = project_store.get_knn(&embedding, 1);
         project_store.embeddings[knn].clone()
     }
 
 
-    fn add_project(&mut self, name: String, project_store: ProjectStore) {
-        self.projects.insert(name, project_store);
+    fn add_project(&mut self, id: i64, project_store: ProjectStore) {
+        self.projects.insert(id, project_store);
     }
 
-    fn get_project(&mut self, name: String) -> Option<&mut ProjectStore> {
-        self.projects.get_mut(&name)
+    fn get_project(&mut self, id: i64) -> Option<&mut ProjectStore> {
+        self.projects.get_mut(&id)
     }
 }
