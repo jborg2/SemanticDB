@@ -15,6 +15,7 @@ use crate::handlers::user_handler::login;
 use crate::memory_management::project_manager::ProjectManager;
 use std::sync::{Arc, Mutex};
 use dotenv::dotenv;
+use actix_files::Files;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -53,6 +54,7 @@ async fn main() -> std::io::Result<()> {
     let mut project_manager = ProjectManager::new(pool.clone());
     project_manager.init_projects().await;
     
+    // Wrap the project_manager in an Arc<Mutex<...>>
     let project_manager = web::Data::new(Arc::new(Mutex::new(project_manager)));
     
     HttpServer::new(move || {
@@ -63,6 +65,9 @@ async fn main() -> std::io::Result<()> {
             .app_data(project_manager.clone())
             .service(
                 web::resource("/login").route(web::post().to(login))
+            )
+            .service(
+                Files::new("/", "src/management_console/out").index_file("index.html")
             )
             //.wrap(JwtMiddleware)
             .configure(handlers::user_handler::init_routes)
