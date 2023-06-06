@@ -132,6 +132,29 @@ pub async fn upload(
     Ok(HttpResponse::Ok().into())
 }
 
+pub async fn get_files_by_project_id(
+    db_pool: web::Data<SqlitePool>,
+    project_id: web::Path<i64>,
+) -> HttpResponse {
+    let mut conn = db_pool.acquire().await.unwrap();
+    let result: Result<Vec<crate::models::file::File>, sqlx::Error> = sqlx::query_as(
+        r#"
+        SELECT id, name, path, project_id FROM file_entry WHERE project_id = ?
+        "#,
+    )
+    .bind(project_id.into_inner())
+    .fetch_all(&mut conn)
+    .await;
+
+    match result {
+        Ok(files) => HttpResponse::Ok().json(files),
+        Err(e) => {
+            eprintln!("Database error: {}", e); // Log the error
+            HttpResponse::InternalServerError().body("Something went wrong")
+        }
+    }
+}
+
 pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::resource("/projects")
@@ -146,5 +169,10 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::resource("/projects/{id}/file")
             .route(web::put().to(upload))
+    );
+
+    cfg.service(
+        web::resource("/projects/{id}/files")
+            .route(web::get().to(get_files_by_project_id))
     );
 }
