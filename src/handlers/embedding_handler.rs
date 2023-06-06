@@ -44,8 +44,7 @@ pub struct Request {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct similiar_text_request {
-    text: String,
-    project_id: i64
+    text: String
 }
 
 pub async fn get_embedding(input_string: String) -> Result<Response, reqwest::Error> {
