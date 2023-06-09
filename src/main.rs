@@ -16,9 +16,11 @@ use crate::memory_management::project_manager::ProjectManager;
 use std::sync::{Arc, Mutex};
 use dotenv::dotenv;
 use actix_files::Files;
+use std::env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init();
     dotenv().ok();
     
     // This will create a new SQLite database in the same directory as your Cargo.toml file.
@@ -66,9 +68,9 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/login").route(web::post().to(login))
             )
-            .service(
-                Files::new("/", "src/management_console/out").index_file("index.html")
-            )
+            //.service(
+            //    Files::new("/", "src/management_console/out").index_file("index.html")
+            //)
             //.wrap(JwtMiddleware)
             .configure(handlers::user_handler::init_routes)
             .configure(handlers::project_handler::init_routes)

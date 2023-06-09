@@ -11,9 +11,12 @@ use async_std::fs::File;
 use async_std::prelude::*;  // Import prelude for write_all
 use futures::TryStreamExt;
 use serde::Deserialize;
+use crate::memory_management::project_manager::ProjectManager;
+use std::sync::{Arc, Mutex};
 
-pub async fn add_project(db_pool: web::Data<SqlitePool>, new_project: web::Json<Project>
+pub async fn add_project(project_manager: web::Data<Arc<Mutex<ProjectManager>>>, db_pool: web::Data<SqlitePool>, new_project: web::Json<Project>
 ) -> HttpResponse {
+    let mut project_manager = project_manager.lock().unwrap();
     let mut conn = db_pool.acquire().await.unwrap();
 
     let mut transaction = conn.begin().await.unwrap(); // Start a new transaction
@@ -33,7 +36,7 @@ pub async fn add_project(db_pool: web::Data<SqlitePool>, new_project: web::Json<
         Ok(_) => {
             let id: i64 = sqlx::query_scalar("SELECT LAST_INSERT_ROWID()").fetch_one(&mut transaction).await.unwrap();
             transaction.commit().await.unwrap(); // Commit the transaction
-
+            project_manager.add_blank_project(id, new_project.name.clone());
             let mut new_project_with_id = new_project.into_inner(); // Get the inner Project from Json<Project>
             new_project_with_id.id = Some(id); // Set the id to the newly inserted id
             fs::create_dir(format!("./project_data/{}", id));
@@ -62,10 +65,15 @@ pub async fn get_project_by_id(
 
     match result {
         Ok(project) => HttpResponse::Ok().json(project),
-        Err(e) => {
-            eprintln!("Database error: {}", e); // Log the error
-            HttpResponse::InternalServerError().body("Something went wrong")
-        }
+        Err(e) => match e {
+            sqlx::Error::RowNotFound => {
+                HttpResponse::NotFound().body("Project not found")
+            }
+            _ => {
+                eprintln!("Database error: {}", e); // Log the error
+                HttpResponse::InternalServerError().body("Something went wrong")
+            }
+        },
     }
 }
 
@@ -148,9 +156,14 @@ pub async fn get_files_by_project_id(
 
     match result {
         Ok(files) => HttpResponse::Ok().json(files),
-        Err(e) => {
-            eprintln!("Database error: {}", e); // Log the error
-            HttpResponse::InternalServerError().body("Something went wrong")
+        Err(e) => match e {
+            sqlx::Error::RowNotFound => {
+                HttpResponse::NotFound().body("Project not found")
+            }
+            _ => {
+                eprintln!("Database error: {}", e); // Log the error
+                HttpResponse::InternalServerError().body("Something went wrong")
+            }
         }
     }
 }

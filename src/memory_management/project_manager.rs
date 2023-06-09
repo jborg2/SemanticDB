@@ -72,7 +72,8 @@ impl ProjectManager {
             )
             .bind(project.id)
             .fetch_all(&mut conn)
-            .await;            
+            .await;     
+
             let file_ids: Vec<i64> = project.file_ids.split(",").map(|x| x.parse::<i64>().unwrap()).collect();
             for embedding in result.unwrap() {
                 let embedding_str = String::from_utf8(embedding.embedding).unwrap();
@@ -84,6 +85,7 @@ impl ProjectManager {
                     end_byte: embedding.end_byte,
                     embedding: data
                 };
+
                 embeddings.push(insert_embedding);
             }
 
@@ -92,13 +94,65 @@ impl ProjectManager {
             
         }
     }
-
+    
     pub fn get_most_similiar_embedding(&mut self, project_id: i64, embedding: Embedding) -> Embedding {
         let project_store = self.get_project(project_id).unwrap();
         let knn = project_store.get_knn(&embedding, 1);
         project_store.embeddings[knn].clone()
     }
 
+
+    pub fn add_blank_project(&mut self, id: i64, name: String) {
+        let project_store = ProjectStore::new(name.clone(), 
+            id, Vec::new(), true, Vec::new());
+        self.add_project(id, project_store);
+    }
+
+    pub fn add_file(&mut self, id: i64, file_id: i64) {
+        let project = self.get_project(id).unwrap();
+        project.file_ids.push(id);
+    }
+
+    pub async fn update_embeddings(&mut self, project_id: i64, file_id: i64) {
+        let mut conn = self.dbPool.acquire().await.unwrap();
+        let result: Result<Vec<EmbeddingResultQuery>, sqlx::Error> = sqlx::query_as(
+            r#"
+            SELECT 
+                file_id, start_byte, end_byte, embedding
+            FROM file_embedding
+                WHERE file_id = ?
+            "#,     
+        )
+
+        .bind(file_id)
+        .fetch_all(&mut conn)
+        .await;
+
+        for embedding in result.unwrap() {
+            let embedding_str = String::from_utf8(embedding.embedding).unwrap();
+            let data: Vec<f64> = serde_json::from_str(&embedding_str).unwrap();
+
+            let insert_embedding = Embedding {
+                file_id: embedding.file_id,
+                start_byte: embedding.start_byte,
+                end_byte: embedding.end_byte,
+                embedding: data
+            };
+
+            let mut project = self.get_project(project_id).unwrap();
+            project.embeddings.push(insert_embedding);
+        }
+    }
+
+    pub fn add_embedding(&mut self, id: i64, embedding: Vec<f64>, file_id: i64, start_byte: i64, end_byte: i64) {
+        let project = self.get_project(id).unwrap();
+        project.embeddings.push(Embedding {
+            embedding: embedding.clone(),
+            start_byte: start_byte,
+            end_byte: end_byte,
+            file_id: file_id
+        })
+    }
 
     fn add_project(&mut self, id: i64, project_store: ProjectStore) {
         self.projects.insert(id, project_store);

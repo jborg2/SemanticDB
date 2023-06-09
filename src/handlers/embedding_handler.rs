@@ -81,7 +81,7 @@ fn read_bytes_range(mut file: &std::fs::File, start: u64, end: u64) -> Vec<u8> {
     buffer
 }
 
-async fn embed_and_store(db_pool: web::Data<SqlitePool>, file: &std::fs::File, start: u64, end: u64, file_id: i64) -> Result<(), sqlx::Error> {
+async fn embed_and_store(db_pool: web::Data<SqlitePool>, project_id: i64, file: &std::fs::File, start: u64, end: u64, file_id: i64) -> Result<(), sqlx::Error> {
     let bytes = read_bytes_range(&file, start, end);
     let input_string = String::from_utf8_lossy(&bytes).to_string();
     match get_embedding(input_string).await {
@@ -124,15 +124,31 @@ async fn embed_and_store(db_pool: web::Data<SqlitePool>, file: &std::fs::File, s
     }
 }
 
-pub async fn embed_file(db_pool: web::Data<SqlitePool>, file_id: web::Path<i64>) -> HttpResponse {
+pub async fn embed_file(mut project_manager: web::Data<Arc<Mutex<ProjectManager>>>, db_pool: web::Data<SqlitePool>, file_id: web::Path<i64>) -> HttpResponse {
     let mut conn = db_pool.acquire().await.unwrap();
+    let mut project_manager = project_manager.lock().unwrap();
     let api_key = std::env::var("OPENAI_API_TOKEN").expect("OPENAI_API_TOKEN must be set.");
+    // Check if there are any embeddings for the file
+    let embeddings_count: (i64,) = sqlx::query_as(
+        r#"
+            SELECT COUNT(*) FROM file_embedding WHERE file_id = ?
+        "#,
+    )
+    .bind(file_id.clone())
+    .fetch_one(&mut conn)
+    .await
+    .unwrap();
+    
+    if embeddings_count.0 > 0 {
+        return HttpResponse::Ok().body("File already embedded");
+    }
+
     let result: Result<File, sqlx::Error> = sqlx::query_as(
         r#"
             SELECT id, name, path, project_id FROM file_entry WHERE id = ?
         "#,
     )
-    .bind(file_id.into_inner())
+    .bind(file_id.clone())
     .fetch_one(&mut conn)
     .await;
     match result {
@@ -153,7 +169,7 @@ pub async fn embed_file(db_pool: web::Data<SqlitePool>, file_id: web::Path<i64>)
                     let mut futures = Vec::new();
                     while start < file_size {
                         let end = std::cmp::min(start + chunk_size, file_size);
-                        futures.push(embed_and_store(db_pool.clone(), &file_data, start, end, file.id));
+                        futures.push(embed_and_store(db_pool.clone(), file.project_id, &file_data, start, end, file.id));
                         start += chunk_size;
                     }
                     let results = join_all(futures).await;
@@ -168,13 +184,14 @@ pub async fn embed_file(db_pool: web::Data<SqlitePool>, file_id: web::Path<i64>)
                             }
                         }
                     }
+                    project_manager.update_embeddings(file.project_id, file_id.into_inner()).await;
                     return HttpResponse::Ok().body("Successfully embedded file")
                 },
             }
         },
         Err(e) => {
             eprintln!("Database error: {}", e); 
-            HttpResponse::InternalServerError().body("Something went wrong")
+            HttpResponse::InternalServerError().body(e.to_string())
         }
     }
 }
