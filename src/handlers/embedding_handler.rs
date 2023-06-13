@@ -13,6 +13,7 @@ use futures::future::join_all;
 use crate::models::embedding_entry::EmbeddingEntry;
 use crate::memory_management::project_manager::ProjectManager;
 use std::sync::{Arc, Mutex};
+use openai_rust;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Embedding {
@@ -47,27 +48,13 @@ pub struct similiar_text_request {
     text: String
 }
 
-pub async fn get_embedding(input_string: String) -> Result<Response, reqwest::Error> {
+pub async fn get_embedding(input_string: String) -> Result<openai_rust::embeddings::EmbeddingsResponse, anyhow::Error> {
     let api_key = std::env::var("OPENAI_API_TOKEN").expect("OPENAI_API_TOKEN must be set.");
-    let data = Request {
-        input: input_string,
-        model: String::from("text-embedding-ada-002"),
-    };
 
-    let client = reqwest::Client::new();
-    let mut res = client.post("https://api.openai.com/v1/embeddings")
-        .header(AUTHORIZATION, format!("Bearer {}", api_key))
-        .json(&data)
-        .send()
-        .await?;
-        
-    if !res.status().is_success() {
-        let server_error: Result<Response, _> = res.json().await;
-        return server_error;
-    }
-    
-    let response_body: Result<Response, _> = res.json().await;
-    response_body
+    let client = openai_rust::Client::new(&api_key);
+    let args = openai_rust::embeddings::EmbeddingsArguments::new("text-embedding-ada-002", input_string);
+
+    client.create_embeddings(args).await
 }
 
 //pub async fn run_embeddings_and_store(db_pool: web::Data<SqlitePool>, input_string: String, )
@@ -235,9 +222,9 @@ pub async fn get_similiar_text(project_manager: web::Data<Arc<Mutex<ProjectManag
     let mut project_manager = project_manager.lock().unwrap();
     match get_embedding(similiar_text_request.text.clone()).await {
         Ok(embedding) => {
-            let embedding = embedding.data[0].embedding.clone();
+            let mut embedding = embedding.data[0].embedding.clone();
             let input_embedding = crate::memory_management::project_store::Embedding {
-                embedding: embedding.clone(),
+                embedding: embedding.iter_mut().map(|e| *e as f64).collect(),
                 start_byte: -1,
                 end_byte: -1,
                 file_id: -1
