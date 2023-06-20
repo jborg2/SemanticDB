@@ -1,11 +1,3 @@
----
-title: Semantics Cloud
-desc: This is a high-powered and lightning fast rust server with a custom vector database that powers embedded search functionality for a range of applications.
-date: 2023-5-23
----
-
-<RepoCard url="https://api.github.com/repos/jborg2/semanticdb"/>
-
 ## Introduction
 SemanticsDB is a vector embeddings data that uses Actix, a Rust backend framework.
 ## API endpoints
