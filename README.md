@@ -35,5 +35,5 @@ searching for KNN on vector embeddings for a particular project. Upon server ini
 in the SQL database and loads their respective embeddings into memory. It also handles synchornization between the database and
 memory embeddings during runtime. 
 ### VPSearch
-The memory manager employs an algorithm called VPSearch to find the KNN vector embeddings for a text embedding.  VPSearch utilizes a (vantage point tree)[https://ieeexplore.ieee.org/document/5202635] 
+The memory manager employs an algorithm called VPSearch to find the KNN vector embeddings for a text embedding.  VPSearch utilizes a [vantage point tree](https://ieeexplore.ieee.org/document/5202635)
 to effeciently search through vector embeddings. 
